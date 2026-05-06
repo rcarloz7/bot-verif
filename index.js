@@ -68,6 +68,7 @@ const msgTracker = new Map();
     console.log(`Bot listo como ${client.user.tag}`);
 
     setInterval(async () => {
+        console.log("Loop activo");
     const ahora = new Date();
 
     const horaMX = new Intl.DateTimeFormat('es-MX', {
@@ -90,7 +91,7 @@ const msgTracker = new Map();
     if (!canal) return;
 
     // ✅ ventana de ejecución (5 min)
-    if (hora === "18" && minuto >= "15" && minuto <= "20") {
+    if (hora === "18" && minuto >= "21" && minuto <= "26") {
 
         for (const user of CUMPLES) {
             const clave = `${user.userId}-${fechaHoy}`;
