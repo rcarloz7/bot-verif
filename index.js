@@ -65,13 +65,11 @@ let mensajeRolesGlobal = null;
 const msgTracker = new Map();
  
     client.once(Events.ClientReady, async () => {
-
     console.log(`Bot listo como ${client.user.tag}`);
 
     setInterval(async () => {
     const ahora = new Date();
 
-    // Hora México (importante)
     const horaMX = new Intl.DateTimeFormat('es-MX', {
         timeZone: 'America/Mexico_City',
         hour: '2-digit',
@@ -82,7 +80,6 @@ const msgTracker = new Map();
     const hora = horaMX.find(p => p.type === 'hour').value;
     const minuto = horaMX.find(p => p.type === 'minute').value;
 
-    // Fecha en formato MM-DD
     const fechaHoy = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/Mexico_City',
         month: '2-digit',
@@ -92,8 +89,8 @@ const msgTracker = new Map();
     const canal = await client.channels.fetch(CANAL_AVISOS).catch(() => null);
     if (!canal) return;
 
-    // 🔥 SOLO a las 18:00 (6PM)
-    if (hora === "18" && minuto === "00") {
+    // ✅ ventana de ejecución (5 min)
+    if (hora === "18" && minuto >= "15" && minuto <= "20") {
 
         for (const user of CUMPLES) {
             const clave = `${user.userId}-${fechaHoy}`;
@@ -106,7 +103,7 @@ const msgTracker = new Map();
 
                 const embed = new EmbedBuilder()
                     .setTitle("🎉 ¡Feliz Cumpleaños! 🎉")
-                    .setDescription(`Hoy celebramos a <@${user.userId}> 🥳\n\n¡Que la pases increíble! 🎁`)                    
+                    .setDescription(`🥳 ¡Que la pases increíble hoy! 🎁`)
                     .setColor(0xFFD700)
                     .setThumbnail(miembro.user.displayAvatarURL({ dynamic: true }))
                     .setTimestamp();
@@ -114,15 +111,16 @@ const msgTracker = new Map();
                 canal.send({
                     content: `@everyone 🎉 ¡Hoy es el cumpleaños de <@${user.userId}>! 🎂`,
                     embeds: [embed]
-                    });
-                }
+                });
             }
+        }
+    }
 
-            // limpiar para el siguiente día
+        if (hora === "00" && minuto === "00") {
             enviadosHoy.clear();
         }
 
-    }, 60 * 1000); // cada minuto
+    }, 60 * 1000);
  
   // Registro de Comandos
   const commands = [
