@@ -1116,7 +1116,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // Botón: Cerrar ticket
+  // Botón: Cerrar tickeT
   if (interaction.customId === 'cerrar_ticket') {
     if (!esStaffTickets(interaction.member)) return sinPermisos(interaction);
     await interaction.reply({ content: '🔒 Cerrando ticket...' });
