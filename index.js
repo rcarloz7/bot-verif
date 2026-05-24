@@ -1094,7 +1094,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       .setTitle('⚔️ RECLUTAMIENTO: COLMILLOS DEL ALBA ⚔️')
       .setDescription(
         '**Bienvenido aspirante.**\n\n' +
-        'Buscamos guerreros con disciplina, constancia y lealtad.\n' +
+        'Buscamos jugadores activos con disciplina, constancia y lealtad.\n' +
         'Haz clic en **📝 Iniciar Formulario** para comenzar.\n\n' +
         '⚠️ **IMPORTANTE:**\n' +
         '> • Las solicitudes poco serias serán rechazadas.\n' +
