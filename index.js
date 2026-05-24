@@ -1030,7 +1030,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         'Haz clic en **📝 Iniciar Formulario** para comenzar.\n\n' +
         '⚠️ **IMPORTANTE:**\n' +
         '> • Las solicitudes poco serias serán rechazadas.\n' +
-        '> • Se evaluará actitud, nivel y compromiso.'
+        '> • Se evaluará actitud, nivel y compromiso'
       )
       .addFields(
         { name: '📜 Requisito Mínimo', value: 'Micrófono y Discord activo.', inline: true },
