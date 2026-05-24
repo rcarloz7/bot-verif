@@ -198,8 +198,18 @@ client.once(Events.ClientReady, async () => {
     },
   ];
 
-  await client.application.commands.set(commands);
-  console.log('✅ Comandos slash registrados.');
+  // ── Registro instantáneo en el servidor ───────────────────
+  const GUILD_ID = '1459675438543540399'; 
+  
+  try {
+    const guild = await client.guilds.fetch(GUILD_ID);
+    await guild.commands.set(commands);
+    console.log('✅ Comandos slash registrados INSTANTÁNEAMENTE en el servidor.');
+  } catch (error) {
+    console.error('⚠️ Error al registrar comandos en el servidor:', error.message);
+    // Si falla por alguna razón, hace el registro global como respaldo
+    await client.application.commands.set(commands);
+  }
 
   // ── Botón de ticket en canal inicial ──────────────────────
   try {
