@@ -285,7 +285,8 @@ client.once(Events.ClientReady, async () => {
 // ============================================================
 
 client.on(Events.MessageDelete, async (message) => {
-  if (!message.guild || message.author?.bot) return;
+  if (message.partial || !message.author) return;
+  if (!message.guild || message.author.bot) return;
 
   const logChannel = message.guild.channels.cache.get(CONFIG.CANAL_LOGS);
   if (!logChannel) return;
@@ -304,14 +305,11 @@ client.on(Events.MessageDelete, async (message) => {
   });
 });
 
-// ============================================================
-//  EVENTO: LOGS — Mensaje editado
-// ============================================================
-
 client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
+  if (oldMessage.partial || !oldMessage.author) return;
+  
   if (
     !oldMessage.guild ||
-    !oldMessage.author ||
     oldMessage.author.bot ||
     oldMessage.content === newMessage.content
   ) return;
