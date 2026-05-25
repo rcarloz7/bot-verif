@@ -396,7 +396,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
     .setDescription(`¡Bienvenido al **Clan ColmillosDelAlba** <@${member.id}>!\nPásala bien!! 🐉`)
     .setColor(0x00FF00)
     .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-    .setImage('https://i.imgur.com/BFAmZ4A.jpg')
+    .setImage('https://i.imgur.com/a/rfVlwgr')
     .setFooter({ text: `Eres el miembro #${member.guild.memberCount}` })
     .setTimestamp();
 
