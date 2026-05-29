@@ -59,13 +59,6 @@ const ROLES_NOTIF = {
 //  ESTADO EN MEMORIA
 // ============================================================
 
-let CUMPLES = [];
-try {
-  CUMPLES = JSON.parse(fs.readFileSync('./cumples.json', 'utf8'));
-} catch (err) {
-  console.error('⚠️ No se pudo leer cumples.json:', err.message);
-}
-
 const enviadosHoy  = new Set();
 const msgTracker   = new Map();   // anti-spam tracker
 // Guarda la especialidad elegida por cada usuario mientras llena el formulario
@@ -229,55 +222,6 @@ client.once(Events.ClientReady, async () => {
   } catch (err) {
     console.error('⚠️ No se pudo enviar el botón de ticket:', err.message);
   }
-
-  // ── Loop de cumpleaños (cada 60 s) ────────────────────────
-  setInterval(async () => {
-    const ahora = new Date();
-
-    const partesMX = new Intl.DateTimeFormat('es-MX', {
-      timeZone: 'America/Mexico_City',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    }).formatToParts(ahora);
-
-    const hora   = partesMX.find(p => p.type === 'hour').value;
-    const minuto = parseInt(partesMX.find(p => p.type === 'minute').value, 10);
-
-    // Resetear envíos a medianoche
-    if (hora === '00' && minuto === 0) enviadosHoy.clear();
-
-    // Ventana de ejecución: 18:21 – 18:26
-    if (hora !== '18' || minuto < 21 || minuto > 26) return;
-
-    const fechaHoy = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Mexico_City',
-      month: '2-digit', day: '2-digit',
-    }).format(ahora);
-
-    const canal = await client.channels.fetch(CONFIG.CANAL_AVISOS).catch(() => null);
-    if (!canal) return;
-
-    for (const user of CUMPLES) {
-      const clave = `${user.userId}-${fechaHoy}`;
-      if (user.fecha !== fechaHoy || enviadosHoy.has(clave)) continue;
-
-      const miembro = await canal.guild.members.fetch(user.userId).catch(() => null);
-      if (!miembro) continue;
-
-      enviadosHoy.add(clave);
-
-      const embed = new EmbedBuilder()
-        .setTitle('🎉 ¡Feliz Cumpleaños! 🎉')
-        .setDescription(`🥳 ¡Que la pases increíble hoy, <@${user.userId}>! 🎁`)
-        .setColor(0xFFD700)
-        .setThumbnail(miembro.user.displayAvatarURL({ dynamic: true }))
-        .setTimestamp();
-
-      canal.send({
-        content: `@everyone 🎉 ¡Hoy es el cumpleaños de <@${user.userId}>! 🎂`,
-        embeds: [embed],
-      }).catch(console.error);
-    }
-  }, 60_000);
 });
 
 // ============================================================
@@ -396,7 +340,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
     .setDescription(`¡Bienvenido al **Clan ColmillosDelAlba** <@${member.id}>!\nPásala bien!! 🐉`)
     .setColor(0x00FF00)
     .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-    .setImage('https://i.imgur.com/a/rfVlwgr')
+    .setImage('https://i.imgur.com/gSJWqbW.png')
     .setFooter({ text: `Eres el miembro #${member.guild.memberCount}` })
     .setTimestamp();
 
