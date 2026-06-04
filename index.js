@@ -497,7 +497,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       .setFooter({ text: 'Evaluación de Actitud y Compromiso' })
       .setTimestamp();
 
-    // Si eligió PvP, mencionar al Tester oficial
     const contenidoMensaje = esPvP
       ? `⚔️ **Solicitud PvP** — Se requiere test. <@&${CONFIG.TESTER_ROLE_ID}>`
       : null;
@@ -762,7 +761,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         '> • Evita el spam.',
         '> • No generes conflictos innecesarios.',
         '> • Mantén los canales según su función. 📂',
-        '> • ❌ No envíes links de servidores externos.',
+        '> • No envíes links de servidores externos. ❌',
         '',
         '### 3️⃣ 🔹 **Actividad**',
         '> • Permanece activo en el servidor.',
@@ -779,7 +778,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         '## 🟢 **REGLAS DE MINECRAFT (dioses.mc)**',
         '',
         '### 1️⃣ 🔹 **Roles y actividades**',
-        '> • **Roles:** ⚔ `PvP` | 🛠️ `Builder` | 🎲 `Casual` | ⚙️ `Técnico`',
+        '> • **Roles:** ⚔️ `PvP` | 🛠️ `Builder` | ⚙️ `Técnico` | ⚒️ `Herrero` | 🌾 `Farmer` ',
         '> • Apoya al clan en aventuras, guerras y construcciones.',
         '',
         '### 2️⃣ 🔹 **Trabajo en equipo**',
@@ -791,7 +790,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         '> • ❌ Incumplir deriva en **expulsión** del clan y el Discord.',
         '',
         '### 4️⃣ 🔹 **Construcciones y territorio**',
-        '> • ❌ No griefear ni destruir construcciones ajenas.',
+        '> • ❌ No grifear ni destruir construcciones ajenas.',
         '> • Pide permiso antes de construir en zonas del clan. 🏗️',
         '',
         '─────────────────────────────',
@@ -822,7 +821,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         '📜 **Staff:** <@793192075495473193>',
         '',
         '─────────────────────────────',
-        '🔥🌅 ¡Que **ColmillosdelAlba** crezca fuerte, unido y legendario! 🌅🐉',
+        '🔥🌅 ¡Que **ColmillosdelAlba** crezca fuerte, unido y legendario! 🌅🐉'
       ].join('\n');
 
       return interaction.reply({
