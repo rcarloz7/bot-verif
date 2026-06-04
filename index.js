@@ -116,7 +116,7 @@ client.once(Events.ClientReady, async () => {
     activities: [{
       name:  'Custom Status',
       type:  ActivityType.Custom,
-      state: 'ColmillosDelAlba — Best Clan in Minecraft',
+      state: 'ColmillosDelAlba',
     }],
     status: 'online',
   });
@@ -812,13 +812,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         '🥈 **Colíder General:** <@1042214255358910514>',
         '🛠️ **Líder de Construcción:** <@1157178540865896580>',
         '📐 **Colíder de Construcción:** <@722044088890818570>',
-        '⚔️ **Líder de PvP:** <@478093856668123148>',
-        '🛡️ **Colíder de PvP:** <@800483019231592488>',
+        '📐 **Colíder de Construcción:** <@793192075495473193>',
+        '⚔️ **Líder de PvP:** <@>',
+        '🛡️ **Colíder de PvP:** <@1218952305274130505>',
         '⚙️ **Líder Técnico:** <@525815527117946892>',
-        '🔧 **Colíder Técnico:** <@712028824652742707>',
-        '🌾 **Líder Farmer:** <@1470155991512252660>',
         '📜 **Staff:** <@694919739688091680>',
-        '📜 **Staff:** <@793192075495473193>',
+        '📜 **Staff:** <@478093856668123148>',
         '',
         '─────────────────────────────',
         '🔥🌅 ¡Que **ColmillosdelAlba** crezca fuerte, unido y legendario! 🌅🐉'
