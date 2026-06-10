@@ -1,6 +1,5 @@
 // ============================================================
-//  ColmillosDelAlba Bot  —  Versión revisada y depurada
-//  Mejoras: imports completos, sin duplicados, lógica corregida
+//                     ColmillosDelAlba Bot
 // ============================================================
 
 const {
@@ -116,7 +115,6 @@ client.once(Events.ClientReady, async () => {
     activities: [{
       name:  'Custom Status',
       type:  ActivityType.Custom,
-      state: 'ColmillosDelAlba',
     }],
     status: 'online',
   });
@@ -813,7 +811,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         '🛠️ **Líder de Construcción:** <@1157178540865896580>',
         '📐 **Colíder de Construcción:** <@722044088890818570>',
         '📐 **Colíder de Construcción:** <@793192075495473193>',
-        '⚔️ **Líder de PvP:** <@>',
+        '⚔️ **Líder de PvP:** <@1342606637185372173>',
         '🛡️ **Colíder de PvP:** <@1218952305274130505>',
         '⚙️ **Líder Técnico:** <@525815527117946892>',
         '📜 **Staff:** <@694919739688091680>',
@@ -1011,24 +1009,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
 
   // Botón: Crear ticket
-  if (interaction.customId === 'crear_ticket') {
-    const nombreCanal  = `verificacion-${interaction.user.id}`;
-    const canalExiste  = interaction.guild.channels.cache.find(c => c.name === nombreCanal);
-    if (canalExiste) return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', ephemeral: true });
+if (interaction.customId === 'crear_ticket') {
+  // Cambiado de .id a .username para usar el nombre de usuario
+  const nombreCanal  = `verificacion-${interaction.user.username}`;
+  
+  // Buscamos el canal asegurando que coincida en minúsculas
+  const canalExiste  = interaction.guild.channels.cache.find(c => c.name === nombreCanal.toLowerCase());
+  if (canalExiste) return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', ephemeral: true });
 
-    const nuevoCanal = await interaction.guild.channels.create({
-      name:   nombreCanal,
-      type:   ChannelType.GuildText,
-      parent: CONFIG.CATEGORIA_TICKETS,
-      topic:  interaction.user.id,
-      permissionOverwrites: [
-        { id: interaction.guild.id,    deny:  [PermissionsBitField.Flags.ViewChannel] },
-        { id: interaction.user.id,     allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: CONFIG.STAFF_ROLE_ID,    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: CONFIG.STAFF_TICKETS_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: client.user.id,          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      ],
-    });
+  const nuevoCanal = await interaction.guild.channels.create({
+    name:   nombreCanal,
+    type:   ChannelType.GuildText,
+    parent: CONFIG.CATEGORIA_TICKETS,
+    topic:  interaction.user.id, // Mantenemos el ID aquí para que el Staff sepa quién es textualmente
+    permissionOverwrites: [
+      { id: interaction.guild.id,    deny:  [PermissionsBitField.Flags.ViewChannel] },
+      { id: interaction.user.id,     allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: CONFIG.STAFF_ROLE_ID,    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: CONFIG.STAFF_TICKETS_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: client.user.id,          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+    ],
+  });
 
     const embedFormulario = new EmbedBuilder()
       .setTitle('⚔️ RECLUTAMIENTO: COLMILLOS DEL ALBA')
