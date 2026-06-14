@@ -119,7 +119,6 @@ client.once(Events.ClientReady, async () => {
   // ── Presencia ──────────────────────────────────────────────
   client.user.setPresence({
     activities: [{
-      name:  'Custom Status',
       type:  ActivityType.Custom,
     }],
     status: 'online',
@@ -1132,18 +1131,42 @@ if (interaction.customId === 'crear_ticket') {
         await targetMember.roles.remove(CONFIG.ESPERANDO_ROLE_ID).catch(() => {});
       }
 
-      // ── Guardar formulario en canal de logs de miembros ───
+      // ── Enviar formulario al canal de logs de miembros ──────
       const datosFormulario = formularioMap.get(interaction.channel.id);
-      const canalLogsMiembros = interaction.guild.channels.cache.get(CONFIG.CANAL_LOGS_MIEMBROS);
 
-      if (canalLogsMiembros && datosFormulario) {
+      // ✅ FIX: usar fetch() en lugar de cache.get() — garantiza encontrar
+      //         el canal aunque no esté cargado en caché al arrancar el bot
+      const canalLogsMiembros = await client.channels.fetch(CONFIG.CANAL_LOGS_MIEMBROS).catch(err => {
+        console.error('❌ No se pudo obtener el canal de logs de miembros:', err.message);
+        return null;
+      });
+
+      if (!canalLogsMiembros) {
+        console.error('❌ Canal de logs de miembros no encontrado. ID configurado:', CONFIG.CANAL_LOGS_MIEMBROS);
+      } else if (!datosFormulario) {
+        // Formulario no está en memoria: el bot fue reiniciado tras abrir el ticket
+        console.warn('⚠️ Sin datos de formulario en memoria para ticket:', interaction.channel.id);
+        const embedLogBasico = new EmbedBuilder()
+          .setTitle('📋 NUEVO MIEMBRO ACEPTADO')
+          .setColor(0xFFA500)
+          .setDescription(
+            `**Usuario:** <@${interaction.channel.topic}>\n` +
+            `**Aceptado por:** <@${interaction.user.id}> (${interaction.user.tag})\n\n` +
+            `⚠️ *Formulario no disponible — el bot fue reiniciado después de abrir el ticket.*`
+          )
+          .setFooter({ text: `Ticket: ${interaction.channel.name}` })
+          .setTimestamp();
+
+        await canalLogsMiembros.send({ embeds: [embedLogBasico] }).catch(err => {
+          console.error('❌ Error enviando log básico:', err.message);
+        });
+      } else {
         const embedLog = new EmbedBuilder()
           .setTitle('📋 NUEVO MIEMBRO ACEPTADO')
           .setColor(0x00FF00)
           .setThumbnail(datosFormulario.avatarURL)
           .setDescription(
-            `**Usuario:** <@${datosFormulario.userId}> (${datosFormulario.userTag})
-` +
+            `**Usuario:** <@${datosFormulario.userId}> (${datosFormulario.userTag})\n` +
             `**Aceptado por:** <@${interaction.user.id}> (${interaction.user.tag})`
           )
           .addFields(
@@ -1156,7 +1179,9 @@ if (interaction.customId === 'crear_ticket') {
           .setFooter({ text: `Ticket: ${interaction.channel.name}` })
           .setTimestamp();
 
-        await canalLogsMiembros.send({ embeds: [embedLog] }).catch(() => {});
+        await canalLogsMiembros.send({ embeds: [embedLog] }).catch(err => {
+          console.error('❌ Error enviando log de miembro aceptado:', err.message);
+        });
       }
 
       // Limpiar datos del formulario de memoria
