@@ -121,7 +121,7 @@ client.once(Events.ClientReady, async () => {
     activities: [{
       name:  '\u200b',   // carácter invisible 
       type:  ActivityType.Custom,
-      state: '🐺',
+      state: '🐉',
     }],
     status: 'online',
   });
