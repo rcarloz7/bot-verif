@@ -119,7 +119,9 @@ client.once(Events.ClientReady, async () => {
   // ── Presencia ──────────────────────────────────────────────
   client.user.setPresence({
     activities: [{
+      name:  '\u200b',   // carácter invisible 
       type:  ActivityType.Custom,
+      state: '🐺',
     }],
     status: 'online',
   });
