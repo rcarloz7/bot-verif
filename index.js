@@ -24,7 +24,7 @@ const CONFIG = {
   MUTE_ROLE_ID:        '1477518735983251638',
   ROL_AVISOS:          '1477748637202382888',
   ROL_DIRECTOS:        '1477748975603023873',
-  // ── Tester de PvP ─────────────────────────────────────────
+
   TESTER_ROLE_ID:      '1480750004309332040',
 
   CANAL_INICIAL:       '1476978880672956428',
@@ -35,6 +35,9 @@ const CONFIG = {
   CANAL_BIENVENIDAS:   '1459690080607146167',
   CANAL_DIRECTOS:      '1477722071202004992',
   CANAL_LOGS:          '1462534103063724062',
+
+  CANAL_LOGS_MIEMBROS: '1515784287490805790',
+  ESPERANDO_ROLE_ID:   '1462547120878784624',
 
   CATEGORIA_TICKETS:   '1477154960343826512',
   CATEGORIA_HISTORIAL: '1476973773579092151',
@@ -63,6 +66,9 @@ const msgTracker   = new Map();   // anti-spam tracker
 // Guarda la especialidad elegida por cada usuario mientras llena el formulario
 // clave: userId  →  valor: string de especialidad
 const specialityMap = new Map();
+// Guarda los datos del formulario por canal de ticket para usarlos al aceptar
+// clave: channelId  →  valor: { userId, datos, especialidad, experiencia, disponibilidad, microfono, esPvP }
+const formularioMap = new Map();
 
 // ============================================================
 //  HELPERS
@@ -503,6 +509,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
       content:  contenidoMensaje,
       embeds:  [embed],
     }).catch(() => {});
+
+    // Guardar datos del formulario indexados por canal de ticket
+    // para recuperarlos cuando el Staff presione "Aceptar"
+    formularioMap.set(interaction.channel.id, {
+      userId:        interaction.user.id,
+      userTag:       interaction.user.tag,
+      avatarURL:     interaction.user.displayAvatarURL({ dynamic: true }),
+      datos,
+      especialidad,
+      experiencia,
+      disponibilidad,
+      microfono,
+      esPvP,
+      aceptadoPor:   null, // se rellena al aceptar
+    });
 
     return interaction.reply({
       content: '✅ Tu solicitud fue enviada. El Staff la revisará pronto.',
@@ -1104,8 +1125,44 @@ if (interaction.customId === 'crear_ticket') {
     const targetMember = await interaction.guild.members.fetch(interaction.channel.topic).catch(() => null);
 
     if (interaction.customId === 'aceptar_miembro') {
-      if (targetMember) await targetMember.roles.add(CONFIG.CLAN_ROLE_ID).catch(() => {});
-      await interaction.reply({ content: '✅ **ACEPTADO.** Rol de clan asignado. Cerrando ticket en 15s...' });
+      if (targetMember) {
+        // ✅ Añadir rol de clan
+        await targetMember.roles.add(CONFIG.CLAN_ROLE_ID).catch(() => {});
+        // ✅ FIX: quitar el rol "Esperando" que traen por defecto al entrar
+        await targetMember.roles.remove(CONFIG.ESPERANDO_ROLE_ID).catch(() => {});
+      }
+
+      // ── Guardar formulario en canal de logs de miembros ───
+      const datosFormulario = formularioMap.get(interaction.channel.id);
+      const canalLogsMiembros = interaction.guild.channels.cache.get(CONFIG.CANAL_LOGS_MIEMBROS);
+
+      if (canalLogsMiembros && datosFormulario) {
+        const embedLog = new EmbedBuilder()
+          .setTitle('📋 NUEVO MIEMBRO ACEPTADO')
+          .setColor(0x00FF00)
+          .setThumbnail(datosFormulario.avatarURL)
+          .setDescription(
+            `**Usuario:** <@${datosFormulario.userId}> (${datosFormulario.userTag})
+` +
+            `**Aceptado por:** <@${interaction.user.id}> (${interaction.user.tag})`
+          )
+          .addFields(
+            { name: '👤 Datos Personales',  value: `\`\`\`${datosFormulario.datos}\`\`\``,           inline: false },
+            { name: '🎮 Especialidad',       value: `\`\`\`${datosFormulario.especialidad}\`\`\``,     inline: true  },
+            { name: '⏳ Experiencia en MC',  value: `\`\`\`${datosFormulario.experiencia}\`\`\``,      inline: true  },
+            { name: '🎤 Micrófono',          value: `\`\`\`${datosFormulario.microfono}\`\`\``,        inline: true  },
+            { name: '⏰ Disponibilidad',     value: `\`\`\`${datosFormulario.disponibilidad}\`\`\``,   inline: false },
+          )
+          .setFooter({ text: `Ticket: ${interaction.channel.name}` })
+          .setTimestamp();
+
+        await canalLogsMiembros.send({ embeds: [embedLog] }).catch(() => {});
+      }
+
+      // Limpiar datos del formulario de memoria
+      formularioMap.delete(interaction.channel.id);
+
+      await interaction.reply({ content: '✅ **ACEPTADO.** Rol de clan asignado y rol de espera removido. Cerrando ticket en 15s...' });
     } else {
       const embedRechazo = new EmbedBuilder()
         .setTitle('⚔️ ESTADO DE POSTULACIÓN: COLMILLOS DEL ALBA ⚔️')
@@ -1122,6 +1179,7 @@ if (interaction.customId === 'crear_ticket') {
         .setTimestamp();
 
       if (targetMember) await targetMember.send({ embeds: [embedRechazo] }).catch(() => {});
+      formularioMap.delete(interaction.channel.id); // limpiar datos del formulario
       await interaction.reply({ content: '❌ **RECHAZADO.** DM enviado. Cerrando ticket en 15s...' });
     }
 
@@ -1132,6 +1190,7 @@ if (interaction.customId === 'crear_ticket') {
   // Botón: Cerrar ticket
   if (interaction.customId === 'cerrar_ticket') {
     if (!esStaffTickets(interaction.member)) return sinPermisos(interaction);
+    formularioMap.delete(interaction.channel.id); // limpiar datos del formulario
     await interaction.reply({ content: '🔒 Cerrando ticket...' });
     setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
   }
