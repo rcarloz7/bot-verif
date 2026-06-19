@@ -107,6 +107,44 @@ async function sinPermisos(interaction) {
   return interaction.reply({ content: '❌ No tienes permisos para usar este comando.', ephemeral: true });
 }
 
+// Mapas y listas para identificar las clases
+const PREFIJOS_CLASE = ['PVP', 'BUILDER', 'TÉCNICO', 'TECNICO', 'HERRERO', 'FARMER'];
+const MAPA_PREFIJOS = {
+  '⚔️': 'PVP',
+  '⚒️': 'BUILDER',
+  '⚙️': 'TÉCNICO',
+  '🏛️': 'FARMER' // <- Según tus ROLES_REACCIONES actuales
+};
+
+/** Actualiza el apodo limpiando clases anteriores y asignando la nueva */
+async function actualizarApodoClase(member, nuevoPrefijo) {
+  let apodoActual = member.nickname || member.user.username;
+
+  // Expresión regular que busca CUALQUIERA de los prefijos al inicio y los borra
+  // Ej: Borrará "BUILDER | " o "PvP | "
+  const regex = new RegExp(`^(${PREFIJOS_CLASE.join('|')})\\s*\\|\\s*`, 'i');
+
+  // Bucle por si hay prefijos apilados (ej: "BUILDER | PVP | STAFF | Monshi")
+  while (regex.test(apodoActual)) {
+    apodoActual = apodoActual.replace(regex, '');
+  }
+
+  // Concatenar el nuevo prefijo (si se envió uno)
+  let nuevoApodo = nuevoPrefijo ? `${nuevoPrefijo} | ${apodoActual}` : apodoActual;
+
+  // Discord tiene un límite estricto de 32 caracteres para el apodo
+  if (nuevoApodo.length > 32) {
+    nuevoApodo = nuevoApodo.substring(0, 32);
+  }
+
+  // Intentar cambiar el apodo
+  try {
+    await member.setNickname(nuevoApodo);
+  } catch (error) {
+    console.error(`[Aviso] No se pudo cambiar el apodo a ${member.user.tag}. Posiblemente es el Owner o tiene un rol superior al bot.`);
+  }
+}
+
 // ============================================================
 //  CLIENTE
 // ============================================================
@@ -382,7 +420,7 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (ROLES_REACCIONES[reaction.emoji.name]) {
     const roleId = ROLES_REACCIONES[reaction.emoji.name];
 
-    // NUEVO: bloquear cambio de rol de clase para miembros normales
+    // Bloquear cambio de rol de clase para miembros normales
     // Staff no tienen esta restricción.
     if (!puedeCambiarRolLibremente(member)) {
       const rolActual = rolDeClaseActual(member);
@@ -397,8 +435,17 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
         return;
       }
     }
-
+    
+    // 1. Asignar el rol
     await member.roles.add(roleId).catch(() => {});
+    
+    // 2. NUEVO: Actualizar el apodo del miembro (Va AQUÍ ADENTRO)
+    const nuevoPrefijo = MAPA_PREFIJOS[reaction.emoji.name];
+    if (nuevoPrefijo) {
+      await actualizarApodoClase(member, nuevoPrefijo);
+    }
+
+    // 3. Enviar mensaje de confirmación
     const rol = reaction.message.guild.roles.cache.get(roleId);
     const m = await reaction.message.channel.send(`✅ Rol **${rol?.name ?? roleId}** asignado.`);
     setTimeout(() => m.delete().catch(() => {}), 4000);
@@ -408,6 +455,7 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (reaction.message.channel.id === CONFIG.CANAL_ROLES && ROLES_NOTIF[reaction.emoji.name]) {
     const roleId = ROLES_NOTIF[reaction.emoji.name];
     await member.roles.add(roleId).catch(() => {});
+    
     const rol = reaction.message.guild.roles.cache.get(roleId);
     const m = await reaction.message.channel.send(`✅ Rol **${rol?.name ?? roleId}** asignado.`);
     setTimeout(() => m.delete().catch(() => {}), 4000);
@@ -440,8 +488,9 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
       return;
     }
     await member.roles.remove(ROLES_REACCIONES[reaction.emoji.name]).catch(() => {});
-  }
-
+    // NUEVO: Limpiar el prefijo al quitarse la reacción
+    await actualizarApodoClase(member, null);
+  }    
   if (ROLES_NOTIF[reaction.emoji.name]) {
     await member.roles.remove(ROLES_NOTIF[reaction.emoji.name]).catch(() => {});
 
