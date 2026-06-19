@@ -87,6 +87,21 @@ function esStaffTickets(member) {
   return esStaff(member) || member.roles.cache.has(CONFIG.STAFF_TICKETS_ID);
 }
 
+/**
+ * Verifica si un miembro está exento del bloqueo de cambio de rol de clase.
+ * Exentos: Staff (y por extensión Líderes/Colíderes/Administradores del Alba,
+ * ya que en este servidor todo Líder/Colíder también tiene el rol Staff asignado).
+ */
+function puedeCambiarRolLibremente(member) {
+  return esStaff(member);
+}
+
+/** Devuelve el ID del rol de clase que el miembro ya tiene asignado, o null si no tiene ninguno. */
+function rolDeClaseActual(member) {
+  const idsClase = Object.values(ROLES_REACCIONES);
+  return idsClase.find(roleId => member.roles.cache.has(roleId)) ?? null;
+}
+
 /** Responde con un error de permisos de forma efímera. */
 async function sinPermisos(interaction) {
   return interaction.reply({ content: '❌ No tienes permisos para usar este comando.', ephemeral: true });
@@ -366,6 +381,23 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   // Roles de clase (cualquier canal)
   if (ROLES_REACCIONES[reaction.emoji.name]) {
     const roleId = ROLES_REACCIONES[reaction.emoji.name];
+
+    // NUEVO: bloquear cambio de rol de clase para miembros normales
+    // Staff no tienen esta restricción.
+    if (!puedeCambiarRolLibremente(member)) {
+      const rolActual = rolDeClaseActual(member);
+
+      if (rolActual && rolActual !== roleId) {
+        // Ya tiene un rol de clase distinto: rechazar el cambio
+        await reaction.users.remove(user.id).catch(() => {});
+        const aviso = await reaction.message.channel.send({
+          content: `⚠️ <@${user.id}> Ya tienes un rol de clase asignado y no puedes cambiarlo tú mismo. Si necesitas cambiarlo, contacta a un líder o al Staff.`,
+        });
+        setTimeout(() => aviso.delete().catch(() => {}), 6000);
+        return;
+      }
+    }
+
     await member.roles.add(roleId).catch(() => {});
     const rol = reaction.message.guild.roles.cache.get(roleId);
     const m = await reaction.message.channel.send(`✅ Rol **${rol?.name ?? roleId}** asignado.`);
@@ -395,6 +427,18 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (!member) return;
 
   if (ROLES_REACCIONES[reaction.emoji.name]) {
+    // ✅ NUEVO: los miembros normales no pueden quitarse su rol de clase
+    //    quitando la reacción (evita que "liberen" el rol para elegir otro).
+    //    El Staff no tiene esta restricción.
+    if (!puedeCambiarRolLibremente(member)) {
+      // Volvemos a poner la reacción para que el rol se mantenga visualmente coherente
+      await reaction.users.add(user.id).catch(() => {});
+      const aviso = await reaction.message.channel.send({
+        content: `⚠️ <@${user.id}> No puedes quitarte tu rol de clase. Si necesitas cambiarlo, contacta a un líder o al Staff.`,
+      });
+      setTimeout(() => aviso.delete().catch(() => {}), 6000);
+      return;
+    }
     await member.roles.remove(ROLES_REACCIONES[reaction.emoji.name]).catch(() => {});
   }
 
