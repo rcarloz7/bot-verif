@@ -102,6 +102,38 @@ function rolDeClaseActual(member) {
   return idsClase.find(roleId => member.roles.cache.has(roleId)) ?? null;
 }
 
+/**
+ * Divide un texto largo en bloques que respeten un límite de caracteres,
+ * cortando siempre en saltos de línea (nunca a la mitad de una línea/link).
+ * Si una sola línea ya supera el límite, se corta como último recurso.
+ */
+function dividirTextoEnBloques(texto, limite = 4000) {
+  const lineas = texto.split('\n');
+  const bloques = [];
+  let bloqueActual = '';
+
+  for (const linea of lineas) {
+    // +1 por el salto de línea que se añadiría
+    if ((bloqueActual + linea).length + 1 > limite) {
+      if (bloqueActual.length > 0) {
+        bloques.push(bloqueActual);
+        bloqueActual = '';
+      }
+      // Caso extremo: una sola línea más larga que el límite
+      if (linea.length > limite) {
+        for (let i = 0; i < linea.length; i += limite) {
+          bloques.push(linea.slice(i, i + limite));
+        }
+        continue;
+      }
+    }
+    bloqueActual += (bloqueActual.length > 0 ? '\n' : '') + linea;
+  }
+
+  if (bloqueActual.length > 0) bloques.push(bloqueActual);
+  return bloques;
+}
+
 /** Responde con un error de permisos de forma efímera. */
 async function sinPermisos(interaction) {
   return interaction.reply({ content: '❌ No tienes permisos para usar este comando.', ephemeral: true });
@@ -252,6 +284,13 @@ client.once(Events.ClientReady, async () => {
       options: [
         { name: 'premio',   description: '¿Qué se sortea?', type: 3, required: true },
         { name: 'duracion', description: 'Duración en minutos', type: 4, required: true },
+      ],
+    },
+    {
+      name: 'publicar-tutoriales',
+      description: 'Publica el listado de tutoriales en un canal (Staff)',
+      options: [
+        { name: 'canal', description: 'Canal donde publicar', type: 7, required: true },
       ],
     },
   ];
@@ -1114,6 +1153,58 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }, duracion * 60_000);
 
       return;
+    }
+
+    // /publicar-tutoriales
+    if (commandName === 'publicar-tutoriales') {
+      if (!esStaff(member)) return sinPermisos(interaction);
+
+      const canalDestino = options.getChannel('canal');
+      if (!canalDestino || canalDestino.type !== ChannelType.GuildText) {
+        return interaction.reply({ content: '❌ Elige un canal de texto válido.', ephemeral: true });
+      }
+
+      // Verificar que el bot puede enviar mensajes ahí
+      const permisosBot = canalDestino.permissionsFor(guild.members.me);
+      if (!permisosBot?.has(PermissionsBitField.Flags.SendMessages)) {
+        return interaction.reply({ content: `❌ No tengo permisos para enviar mensajes en <#${canalDestino.id}>.`, ephemeral: true });
+      }
+
+      // Leer el archivo con el listado de tutoriales
+      let contenido;
+      try {
+        contenido = fs.readFileSync('./tutoriales.txt', 'utf8');
+      } catch (err) {
+        console.error('❌ Error leyendo tutoriales.txt:', err.message);
+        return interaction.reply({ content: '❌ No se pudo leer el archivo tutoriales.txt. Verifica que exista en la raíz del proyecto.', ephemeral: true });
+      }
+
+      await interaction.reply({ content: `⏳ Publicando tutoriales en <#${canalDestino.id}>...`, ephemeral: true });
+
+      // Dividir respetando el límite de descripción de un embed (4096) con margen
+      const bloques = dividirTextoEnBloques(contenido, 4000);
+
+      try {
+        for (let i = 0; i < bloques.length; i++) {
+          const embed = new EmbedBuilder()
+            .setDescription(bloques[i])
+            .setColor(0x8B0000);
+
+          // Solo el primer embed lleva título
+          if (i === 0) embed.setTitle('📚 Tutoriales y Recursos');
+          // Solo el último lleva footer con la fecha de publicación
+          if (i === bloques.length - 1) {
+            embed.setFooter({ text: `Publicado por ${interaction.user.tag}` }).setTimestamp();
+          }
+
+          await canalDestino.send({ embeds: [embed] });
+        }
+
+        return interaction.editReply({ content: `✅ Tutoriales publicados en <#${canalDestino.id}> (${bloques.length} mensaje${bloques.length === 1 ? '' : 's'}).` });
+      } catch (err) {
+        console.error('❌ Error publicando tutoriales:', err.message);
+        return interaction.editReply({ content: '❌ Ocurrió un error al publicar. Revisa los logs del bot.' });
+      }
     }
 
     return; // Comando no reconocido — no hacer nada
