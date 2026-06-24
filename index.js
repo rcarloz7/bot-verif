@@ -21,7 +21,7 @@ const CONFIG = {
   STAFF_ROLE_ID_2:     '1478799916410077295',
   STAFF_TICKETS_ID:    '1480750004309332040',
   CLAN_ROLE_ID:        '1459687732417921227',
-  MUTE_ROLE_ID:        '1477518735983251638',
+  // MUTE_ROLE_ID eliminado — ahora se usa el timeout nativo de Discord (/mute)
   ROL_AVISOS:          '1477748637202382888',
   ROL_DIRECTOS:        '1477748975603023873',
 
@@ -839,7 +839,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return canalDirectos.send({ content: `<@&${CONFIG.ROL_DIRECTOS}>`, embeds: [embed] });
     }
 
-    // /mute
+    // /mute — usa timeout nativo de Discord (bloquea mensajes en todos los canales)
     if (commandName === 'mute') {
       if (!esStaff(member)) return sinPermisos(interaction);
 
@@ -849,38 +849,75 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       if (!target) return interaction.reply({ content: '❌ Usuario no encontrado.', ephemeral: true });
 
-      const muteRole = guild.roles.cache.get(CONFIG.MUTE_ROLE_ID);
-      if (!muteRole) return interaction.reply({ content: '❌ Rol de muteo no encontrado.', ephemeral: true });
+      // No se puede mutear a otro miembro de Staff
+      if (esStaff(target)) {
+        return interaction.reply({ content: '❌ No puedes mutear a un miembro del Staff.', ephemeral: true });
+      }
 
-      await target.roles.add(muteRole);
-      await interaction.reply({
+      // discord.js v14: timeout() acepta milisegundos (máx. 28 días = 2_419_200_000 ms)
+      const ms = tiempo * 60_000;
+      const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
+      if (ms > MAX_TIMEOUT_MS) {
+        return interaction.reply({ content: '❌ El tiempo máximo de mute es 28 días (40320 minutos).', ephemeral: true });
+      }
+
+      try {
+        await target.timeout(ms, razon);
+      } catch (err) {
+        console.error('❌ Error al mutear:', err.message);
+        return interaction.reply({ content: '❌ No se pudo mutear al usuario. Verifica que el bot tenga el permiso **Moderar Miembros** y que su rol esté por encima del usuario.', ephemeral: true });
+      }
+
+      // Calcular cuándo se levanta el mute para mostrarlo
+      const hasta = new Date(Date.now() + ms);
+      const horasTexto = tiempo >= 60
+        ? `${Math.floor(tiempo / 60)}h ${tiempo % 60}m`
+        : `${tiempo} min`;
+
+      return interaction.reply({
         embeds: [new EmbedBuilder()
           .setTitle('🔇 Usuario Muteado')
-          .setDescription(`**Usuario:** ${target.user.tag}\n**Tiempo:** ${tiempo} min\n**Razón:** ${razon}`)
+          .setDescription(
+            `**Usuario:** ${target.user.tag}\n` +
+            `**Duración:** ${horasTexto}\n` +
+            `**Expira:** <t:${Math.floor(hasta.getTime() / 1000)}:R>\n` +
+            `**Razón:** ${razon}`
+          )
           .setColor(0xFFA500)
+          .setFooter({ text: `Muteado por ${interaction.user.tag}` })
+          .setTimestamp()
         ],
       });
-
-      setTimeout(() => target.roles.remove(muteRole).catch(() => {}), tiempo * 60_000);
-      return;
     }
 
-    // /unmute
+    // /unmute — quita el timeout nativo de Discord
     if (commandName === 'unmute') {
       if (!esStaff(member)) return sinPermisos(interaction);
 
       const target = options.getMember('usuario');
       if (!target) return interaction.reply({ content: '❌ Usuario no encontrado.', ephemeral: true });
 
-      const muteRole = guild.roles.cache.get(CONFIG.MUTE_ROLE_ID);
-      if (!muteRole) return interaction.reply({ content: '❌ Rol de muteo no encontrado.', ephemeral: true });
+      // Si no tiene timeout activo, avisamos
+      if (!target.communicationDisabledUntil) {
+        return interaction.reply({ content: `ℹ️ ${target.user.tag} no tiene ningún mute activo.`, ephemeral: true });
+      }
 
-      await target.roles.remove(muteRole);
+      try {
+        await target.timeout(null, `Mute eliminado por ${interaction.user.tag}`);
+      } catch (err) {
+        console.error('❌ Error al desmutear:', err.message);
+        return interaction.reply({ content: '❌ No se pudo desmutear al usuario. Verifica permisos del bot.', ephemeral: true });
+      }
+
       return interaction.reply({
         embeds: [new EmbedBuilder()
           .setTitle('🔊 Usuario Desmuteado')
-          .setDescription(`**Usuario:** ${target.user.tag}`)
+          .setDescription(
+            `**Usuario:** ${target.user.tag}\n` +
+            `**Demuteado por:** ${interaction.user.tag}`
+          )
           .setColor(0x00FF00)
+          .setTimestamp()
         ],
       });
     }
