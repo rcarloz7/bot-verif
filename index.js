@@ -861,18 +861,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: '❌ El tiempo máximo de mute es 28 días (40320 minutos).', ephemeral: true });
       }
 
+      // ✅ Calcular expiración ANTES del await para que el timestamp sea preciso
+      const hasta = new Date(Date.now() + ms);
+      const horasTexto = tiempo >= 60
+        ? `${Math.floor(tiempo / 60)}h ${tiempo % 60}m`
+        : `${tiempo} min`;
+
       try {
         await target.timeout(ms, razon);
       } catch (err) {
         console.error('❌ Error al mutear:', err.message);
         return interaction.reply({ content: '❌ No se pudo mutear al usuario. Verifica que el bot tenga el permiso **Moderar Miembros** y que su rol esté por encima del usuario.', ephemeral: true });
       }
-
-      // Calcular cuándo se levanta el mute para mostrarlo
-      const hasta = new Date(Date.now() + ms);
-      const horasTexto = tiempo >= 60
-        ? `${Math.floor(tiempo / 60)}h ${tiempo % 60}m`
-        : `${tiempo} min`;
 
       return interaction.reply({
         embeds: [new EmbedBuilder()
