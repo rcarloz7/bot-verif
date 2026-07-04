@@ -7,7 +7,7 @@ const {
   PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   EmbedBuilder, Events, ModalBuilder, TextInputBuilder, TextInputStyle,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-  ActivityType
+  ActivityType, MessageFlags
 } = require('discord.js');
 
 const fs = require('fs');
@@ -19,13 +19,13 @@ const fs = require('fs');
 const CONFIG = {
   STAFF_ROLE_ID:       '1463268597085507717',
   STAFF_ROLE_ID_2:     '1478799916410077295',
-  STAFF_TICKETS_ID:    '1480750004309332040',
+  STAFF_TICKETS_ID:    '1480750004309332040', // Rol que puede VER y RECLAMAR tickets (pero NO aceptar/rechazar miembros)
   CLAN_ROLE_ID:        '1459687732417921227',
   // MUTE_ROLE_ID eliminado — ahora se usa el timeout nativo de Discord (/mute)
   ROL_AVISOS:          '1477748637202382888',
   ROL_DIRECTOS:        '1477748975603023873',
 
-  TESTER_ROLE_ID:      '1480750004309332040',
+  TESTER_ROLE_ID:      '1483296004903141507', // Colíder PvP — solo se menciona en solicitudes PvP
 
   CANAL_INICIAL:       '1476978880672956428',
   CANAL_AVISOS:        '1462533102130958437',
@@ -82,9 +82,17 @@ function esStaff(member) {
   );
 }
 
-/** Verifica si un miembro puede gestionar tickets (staff o staff_tickets). */
+/**
+ * Verifica si un miembro puede gestionar tickets (reclamar, cerrar).
+ * Incluye: Staff, rol STAFF_TICKETS_ID y Colíder PvP (TESTER_ROLE_ID).
+ * No incluye permisos de aceptar/rechazar — eso es solo esStaff().
+ */
 function esStaffTickets(member) {
-  return esStaff(member) || member.roles.cache.has(CONFIG.STAFF_TICKETS_ID);
+  return (
+    esStaff(member) ||
+    member.roles.cache.has(CONFIG.STAFF_TICKETS_ID) ||
+    member.roles.cache.has(CONFIG.TESTER_ROLE_ID)   // Colíder PvP puede reclamar y cerrar tickets
+  );
 }
 
 /**
@@ -136,7 +144,7 @@ function dividirTextoEnBloques(texto, limite = 4000) {
 
 /** Responde con un error de permisos de forma efímera. */
 async function sinPermisos(interaction) {
-  return interaction.reply({ content: '❌ No tienes permisos para usar este comando.', ephemeral: true });
+  return interaction.reply({ content: '❌ No tienes permisos para usar este comando.', flags: MessageFlags.Ephemeral });
 }
 
 // Mapas y listas para identificar las clases
@@ -660,7 +668,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     return interaction.reply({
       content: '✅ Tu solicitud fue enviada. El Staff la revisará pronto.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -805,7 +813,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // /chamba
     if (commandName === 'chamba') {
       if (interaction.user.id !== '777529808325181460') {
-        return interaction.reply({ content: '❌ Solo guepar__ puede usar este comando.', ephemeral: true });
+        return interaction.reply({ content: '❌ Solo guepar__ puede usar este comando.', flags: MessageFlags.Ephemeral });
       }
       const texto = options.getString('mensaje');
       const embed = new EmbedBuilder()
@@ -816,7 +824,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setFooter({ text: 'Att: guepar__' })
         .setTimestamp();
 
-      await interaction.reply({ content: '✅ Mensaje enviado.', ephemeral: true });
+      await interaction.reply({ content: '✅ Mensaje enviado.', flags: MessageFlags.Ephemeral });
       return interaction.channel.send({ embeds: [embed] });
     }
 
@@ -827,7 +835,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const enlace = options.getString('enlace');
       const juego  = options.getString('juego');
       const canalDirectos = guild.channels.cache.get(CONFIG.CANAL_DIRECTOS);
-      if (!canalDirectos) return interaction.reply({ content: '❌ Canal de directos no encontrado.', ephemeral: true });
+      if (!canalDirectos) return interaction.reply({ content: '❌ Canal de directos no encontrado.', flags: MessageFlags.Ephemeral });
 
       const embed = new EmbedBuilder()
         .setTitle('🎥 ¡ESTAMOS EN DIRECTO! 🎥')
@@ -835,7 +843,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(0x9146FF)
         .setTimestamp();
 
-      await interaction.reply({ content: `✅ Anuncio enviado a <#${CONFIG.CANAL_DIRECTOS}>.`, ephemeral: true });
+      await interaction.reply({ content: `✅ Anuncio enviado a <#${CONFIG.CANAL_DIRECTOS}>.`, flags: MessageFlags.Ephemeral });
       return canalDirectos.send({ content: `<@&${CONFIG.ROL_DIRECTOS}>`, embeds: [embed] });
     }
 
@@ -847,18 +855,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const tiempo = options.getInteger('tiempo');
       const razon  = options.getString('razon') ?? 'No especificada';
 
-      if (!target) return interaction.reply({ content: '❌ Usuario no encontrado.', ephemeral: true });
+      if (!target) return interaction.reply({ content: '❌ Usuario no encontrado.', flags: MessageFlags.Ephemeral });
 
       // No se puede mutear a otro miembro de Staff
       if (esStaff(target)) {
-        return interaction.reply({ content: '❌ No puedes mutear a un miembro del Staff.', ephemeral: true });
+        return interaction.reply({ content: '❌ No puedes mutear a un miembro del Staff.', flags: MessageFlags.Ephemeral });
       }
 
       // discord.js v14: timeout() acepta milisegundos (máx. 28 días = 2_419_200_000 ms)
       const ms = tiempo * 60_000;
       const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
       if (ms > MAX_TIMEOUT_MS) {
-        return interaction.reply({ content: '❌ El tiempo máximo de mute es 28 días (40320 minutos).', ephemeral: true });
+        return interaction.reply({ content: '❌ El tiempo máximo de mute es 28 días (40320 minutos).', flags: MessageFlags.Ephemeral });
       }
 
       // ✅ Calcular expiración ANTES del await para que el timestamp sea preciso
@@ -871,7 +879,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await target.timeout(ms, razon);
       } catch (err) {
         console.error('❌ Error al mutear:', err.message);
-        return interaction.reply({ content: '❌ No se pudo mutear al usuario. Verifica que el bot tenga el permiso **Moderar Miembros** y que su rol esté por encima del usuario.', ephemeral: true });
+        return interaction.reply({ content: '❌ No se pudo mutear al usuario. Verifica que el bot tenga el permiso **Moderar Miembros** y que su rol esté por encima del usuario.', flags: MessageFlags.Ephemeral });
       }
 
       return interaction.reply({
@@ -895,18 +903,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!esStaff(member)) return sinPermisos(interaction);
 
       const target = options.getMember('usuario');
-      if (!target) return interaction.reply({ content: '❌ Usuario no encontrado.', ephemeral: true });
+      if (!target) return interaction.reply({ content: '❌ Usuario no encontrado.', flags: MessageFlags.Ephemeral });
 
       // Si no tiene timeout activo, avisamos
       if (!target.communicationDisabledUntil) {
-        return interaction.reply({ content: `ℹ️ ${target.user.tag} no tiene ningún mute activo.`, ephemeral: true });
+        return interaction.reply({ content: `ℹ️ ${target.user.tag} no tiene ningún mute activo.`, flags: MessageFlags.Ephemeral });
       }
 
       try {
         await target.timeout(null, `Mute eliminado por ${interaction.user.tag}`);
       } catch (err) {
         console.error('❌ Error al desmutear:', err.message);
-        return interaction.reply({ content: '❌ No se pudo desmutear al usuario. Verifica permisos del bot.', ephemeral: true });
+        return interaction.reply({ content: '❌ No se pudo desmutear al usuario. Verifica permisos del bot.', flags: MessageFlags.Ephemeral });
       }
 
       return interaction.reply({
@@ -928,11 +936,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const cantidad = options.getInteger('cantidad');
       if (cantidad < 1 || cantidad > 100) {
-        return interaction.reply({ content: '❌ Ingresa un número entre 1 y 100.', ephemeral: true });
+        return interaction.reply({ content: '❌ Ingresa un número entre 1 y 100.', flags: MessageFlags.Ephemeral });
       }
 
       await interaction.channel.bulkDelete(cantidad, true);
-      return interaction.reply({ content: `✅ Se eliminaron **${cantidad}** mensajes.`, ephemeral: true });
+      return interaction.reply({ content: `✅ Se eliminaron **${cantidad}** mensajes.`, flags: MessageFlags.Ephemeral });
     }
 
     // /reglas
@@ -1043,7 +1051,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const texto = options.getString('mensaje');
       const canalAvisos = guild.channels.cache.get(CONFIG.CANAL_AVISOS);
-      if (!canalAvisos) return interaction.reply({ content: '❌ Canal de avisos no encontrado.', ephemeral: true });
+      if (!canalAvisos) return interaction.reply({ content: '❌ Canal de avisos no encontrado.', flags: MessageFlags.Ephemeral });
 
       await canalAvisos.send({
         content: `<@&${CONFIG.ROL_AVISOS}>`,
@@ -1054,7 +1062,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setTimestamp()
         ],
       });
-      return interaction.reply({ content: '✅ Anuncio enviado.', ephemeral: true });
+      return interaction.reply({ content: '✅ Anuncio enviado.', flags: MessageFlags.Ephemeral });
     }
 
     // /kick, /ban, /warn
@@ -1084,12 +1092,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // /suggest
     if (commandName === 'suggest') {
       if (interaction.channel.id !== CONFIG.CANAL_COMANDOS) {
-        return interaction.reply({ content: `❌ Este comando solo se puede usar en <#${CONFIG.CANAL_COMANDOS}>.`, ephemeral: true });
+        return interaction.reply({ content: `❌ Este comando solo se puede usar en <#${CONFIG.CANAL_COMANDOS}>.`, flags: MessageFlags.Ephemeral });
       }
 
       const texto = options.getString('texto');
       const canalSugerencias = await client.channels.fetch(CONFIG.CANAL_SUGERENCIAS).catch(() => null);
-      if (!canalSugerencias) return interaction.reply({ content: '❌ Canal de sugerencias no encontrado.', ephemeral: true });
+      if (!canalSugerencias) return interaction.reply({ content: '❌ Canal de sugerencias no encontrado.', flags: MessageFlags.Ephemeral });
 
       const embed = new EmbedBuilder()
         .setTitle('📌 Nueva Sugerencia')
@@ -1102,7 +1110,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await msg.react('👍');
       await msg.react('👎');
 
-      return interaction.reply({ content: '✅ Tu sugerencia fue enviada correctamente.', ephemeral: true });
+      return interaction.reply({ content: '✅ Tu sugerencia fue enviada correctamente.', flags: MessageFlags.Ephemeral });
     }
 
     // /stats
@@ -1137,7 +1145,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // /top
     if (commandName === 'top') {
-      return interaction.reply({ content: '📊 Comando en desarrollo.', ephemeral: true });
+      return interaction.reply({ content: '📊 Comando en desarrollo.', flags: MessageFlags.Ephemeral });
     }
 
     // /sorteo
@@ -1154,7 +1162,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setFooter({ text: `Sorteo iniciado por ${interaction.user.username}` })
         .setTimestamp(Date.now() + duracion * 60_000);
 
-      await interaction.reply({ content: '✅ Sorteo creado.', ephemeral: true });
+      await interaction.reply({ content: '✅ Sorteo creado.', flags: MessageFlags.Ephemeral });
       const msgSorteo = await interaction.channel.send({ content: '@everyone', embeds: [embed] });
       await msgSorteo.react('🎟️');
 
@@ -1198,13 +1206,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const canalDestino = options.getChannel('canal');
       if (!canalDestino || canalDestino.type !== ChannelType.GuildText) {
-        return interaction.reply({ content: '❌ Elige un canal de texto válido.', ephemeral: true });
+        return interaction.reply({ content: '❌ Elige un canal de texto válido.', flags: MessageFlags.Ephemeral });
       }
 
       // Verificar que el bot puede enviar mensajes ahí
       const permisosBot = canalDestino.permissionsFor(guild.members.me);
       if (!permisosBot?.has(PermissionsBitField.Flags.SendMessages)) {
-        return interaction.reply({ content: `❌ No tengo permisos para enviar mensajes en <#${canalDestino.id}>.`, ephemeral: true });
+        return interaction.reply({ content: `❌ No tengo permisos para enviar mensajes en <#${canalDestino.id}>.`, flags: MessageFlags.Ephemeral });
       }
 
       // Leer el archivo con el listado de tutoriales
@@ -1213,10 +1221,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         contenido = fs.readFileSync('./tutoriales.txt', 'utf8');
       } catch (err) {
         console.error('❌ Error leyendo tutoriales.txt:', err.message);
-        return interaction.reply({ content: '❌ No se pudo leer el archivo tutoriales.txt. Verifica que exista en la raíz del proyecto.', ephemeral: true });
+        return interaction.reply({ content: '❌ No se pudo leer el archivo tutoriales.txt. Verifica que exista en la raíz del proyecto.', flags: MessageFlags.Ephemeral });
       }
 
-      await interaction.reply({ content: `⏳ Publicando tutoriales en <#${canalDestino.id}>...`, ephemeral: true });
+      await interaction.reply({ content: `⏳ Publicando tutoriales en <#${canalDestino.id}>...`, flags: MessageFlags.Ephemeral });
 
       // Dividir respetando el límite de descripción de un embed (4096) con margen
       const bloques = dividirTextoEnBloques(contenido, 4000);
@@ -1258,7 +1266,7 @@ if (interaction.customId === 'crear_ticket') {
   
   // Buscamos el canal asegurando que coincida en minúsculas
   const canalExiste  = interaction.guild.channels.cache.find(c => c.name === nombreCanal.toLowerCase());
-  if (canalExiste) return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', ephemeral: true });
+  if (canalExiste) return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', flags: MessageFlags.Ephemeral });
 
   const nuevoCanal = await interaction.guild.channels.create({
     name:   nombreCanal,
@@ -1270,6 +1278,7 @@ if (interaction.customId === 'crear_ticket') {
       { id: interaction.user.id,     allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
       { id: CONFIG.STAFF_ROLE_ID,    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
       { id: CONFIG.STAFF_TICKETS_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: CONFIG.TESTER_ROLE_ID,   allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, // Colíder PvP — ve y participa, pero no acepta/rechaza
       { id: client.user.id,          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
     ],
   });
@@ -1309,7 +1318,7 @@ if (interaction.customId === 'crear_ticket') {
       components: [fila1, fila2],
     });
 
-    return interaction.reply({ content: `✅ Ticket creado en <#${nuevoCanal.id}>.`, ephemeral: true });
+    return interaction.reply({ content: `✅ Ticket creado en <#${nuevoCanal.id}>.`, flags: MessageFlags.Ephemeral });
   }
 
   // Botón: Abrir formulario → primero muestra el select de especialidad
@@ -1330,7 +1339,7 @@ if (interaction.customId === 'crear_ticket') {
     return interaction.reply({
       content: '**¿Cuál es tu especialidad principal?**\nElige una opción para continuar con el formulario.',
       components: [fila],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -1342,9 +1351,14 @@ if (interaction.customId === 'crear_ticket') {
 
   // Botones: Aceptar / Rechazar miembro
   if (interaction.customId === 'aceptar_miembro' || interaction.customId === 'rechazar_miembro') {
-    if (!esStaffTickets(interaction.member)) return sinPermisos(interaction);
+    // ✅ Solo Staff puro puede aceptar/rechazar — el Colíder PvP/Tester puede ver el ticket
+    //    y reclamarlo, pero no tiene permiso de aceptar/rechazar miembros
+    if (!esStaff(interaction.member)) return sinPermisos(interaction);
 
-    const targetMember = await interaction.guild.members.fetch(interaction.channel.topic).catch(() => null);
+    // ✅ FIX CRASH: guardar referencia al canal AHORA, antes de cualquier await o setTimeout
+    //    porque interaction.channel puede volverse null después de que el canal se borre
+    const canalTicket = interaction.channel;
+    const targetMember = await interaction.guild.members.fetch(canalTicket.topic).catch(() => null);
 
     if (interaction.customId === 'aceptar_miembro') {
       if (targetMember) {
@@ -1355,10 +1369,8 @@ if (interaction.customId === 'crear_ticket') {
       }
 
       // ── Enviar formulario al canal de logs de miembros ──────
-      const datosFormulario = formularioMap.get(interaction.channel.id);
+      const datosFormulario = formularioMap.get(canalTicket.id);
 
-      // ✅ FIX: usar fetch() en lugar de cache.get() — garantiza encontrar
-      //         el canal aunque no esté cargado en caché al arrancar el bot
       const canalLogsMiembros = await client.channels.fetch(CONFIG.CANAL_LOGS_MIEMBROS).catch(err => {
         console.error('❌ No se pudo obtener el canal de logs de miembros:', err.message);
         return null;
@@ -1367,17 +1379,16 @@ if (interaction.customId === 'crear_ticket') {
       if (!canalLogsMiembros) {
         console.error('❌ Canal de logs de miembros no encontrado. ID configurado:', CONFIG.CANAL_LOGS_MIEMBROS);
       } else if (!datosFormulario) {
-        // Formulario no está en memoria: el bot fue reiniciado tras abrir el ticket
-        console.warn('⚠️ Sin datos de formulario en memoria para ticket:', interaction.channel.id);
+        // El bot fue reiniciado tras abrir el ticket — enviamos log básico igualmente
         const embedLogBasico = new EmbedBuilder()
           .setTitle('📋 NUEVO MIEMBRO ACEPTADO')
           .setColor(0xFFA500)
           .setDescription(
-            `**Usuario:** <@${interaction.channel.topic}>\n` +
+            `**Usuario:** <@${canalTicket.topic}>\n` +
             `**Aceptado por:** <@${interaction.user.id}> (${interaction.user.tag})\n\n` +
             `⚠️ *Formulario no disponible — el bot fue reiniciado después de abrir el ticket.*`
           )
-          .setFooter({ text: `Ticket: ${interaction.channel.name}` })
+          .setFooter({ text: `Ticket: ${canalTicket.name}` })
           .setTimestamp();
 
         await canalLogsMiembros.send({ embeds: [embedLogBasico] }).catch(err => {
@@ -1399,7 +1410,7 @@ if (interaction.customId === 'crear_ticket') {
             { name: '🎤 Micrófono',          value: `\`\`\`${datosFormulario.microfono}\`\`\``,        inline: true  },
             { name: '⏰ Disponibilidad',     value: `\`\`\`${datosFormulario.disponibilidad}\`\`\``,   inline: false },
           )
-          .setFooter({ text: `Ticket: ${interaction.channel.name}` })
+          .setFooter({ text: `Ticket: ${canalTicket.name}` })
           .setTimestamp();
 
         await canalLogsMiembros.send({ embeds: [embedLog] }).catch(err => {
@@ -1407,9 +1418,7 @@ if (interaction.customId === 'crear_ticket') {
         });
       }
 
-      // Limpiar datos del formulario de memoria
-      formularioMap.delete(interaction.channel.id);
-
+      formularioMap.delete(canalTicket.id);
       await interaction.reply({ content: '✅ **ACEPTADO.** Rol de clan asignado y rol de espera removido. Cerrando ticket en 15s...' });
     } else {
       const embedRechazo = new EmbedBuilder()
@@ -1427,11 +1436,11 @@ if (interaction.customId === 'crear_ticket') {
         .setTimestamp();
 
       if (targetMember) await targetMember.send({ embeds: [embedRechazo] }).catch(() => {});
-      formularioMap.delete(interaction.channel.id); // limpiar datos del formulario
+      formularioMap.delete(canalTicket.id);
       await interaction.reply({ content: '❌ **RECHAZADO.** DM enviado. Cerrando ticket en 15s...' });
     }
 
-    setTimeout(() => interaction.channel.delete().catch(() => {}), 15_000);
+    setTimeout(() => canalTicket.delete().catch(() => {}), 15_000);
     return;
   }
 
