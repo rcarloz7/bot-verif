@@ -295,6 +295,10 @@ client.once(Events.ClientReady, async () => {
       ],
     },
     {
+      name: 'autodestruccion',
+      description: 'Ejecuta el Plan Inglaterra (Solo Staff)',
+    },
+    {
       name: 'publicar-tutoriales',
       description: 'Publica el listado de tutoriales en un canal (Staff)',
       options: [
@@ -1200,6 +1204,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    // /autodestruccion
+    if (commandName === 'autodestruccion') {
+      if (!esStaff(member)) return sinPermisos(interaction);
+
+      const embed = new EmbedBuilder()
+        .setTitle('💣 Ejecutando el "Plan Inglaterra"')
+        .setDescription(
+          'Este servidor de Discord será borrado a las **12 AM hora CDMX** debido a cierto evento realizado el día de hoy, ' +
+          'lamentamos que esto haya acabado así pero es lo mejor para todos. ' +
+          'Un abrazo y hasta la próxima.'
+        )
+        .setColor(0x8B0000)
+        .setTimestamp();
+
+      await interaction.reply({ content: '@everyone', embeds: [embed], allowedMentions: { parse: ['everyone'] } });
+      return;
+    }
+
     // /publicar-tutoriales
     if (commandName === 'publicar-tutoriales') {
       if (!esStaff(member)) return sinPermisos(interaction);
@@ -1440,6 +1462,8 @@ if (interaction.customId === 'crear_ticket') {
       await interaction.reply({ content: '❌ **RECHAZADO.** DM enviado. Cerrando ticket en 15s...' });
     }
 
+    // ✅ FIX CRASH: usar canalTicket (referencia guardada antes del await)
+    //    en lugar de interaction.channel que puede ser null después de borrar el canal
     setTimeout(() => canalTicket.delete().catch(() => {}), 15_000);
     return;
   }
